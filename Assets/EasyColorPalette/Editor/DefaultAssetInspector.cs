@@ -10,36 +10,45 @@ namespace EasyColorPalette
     using UnityEngine;
 
     /// <summary>
-    /// Acoファイルのインスペクター表示
+    /// インスペクター表示
     /// </summary>
     [CustomEditor(typeof(DefaultAsset), false)]
-    public class AcoInspector : Editor
+    public class DefaultAssetInspector : Editor
     {
         const float FieldSpace = 4f;
         const float ColorMargin1 = 20f;
         const float ColorMargin2 = 12f;
         const float ColorSpace = 0f;
         const float ColorHeight = 12f;
-        private string acoName;
+        private string dataName;
         private Color[] colorArray;
 
         void OnEnable()
         {
-            if (!this.IsAco()) { return; }
-            this.acoName = target.name;
-            this.colorArray = AcoExtractor.GetColors(target).ToArray();
+            this.dataName = target.name;
+
+            switch (this.GetDataType())
+            {
+                case DataType.ACO:
+                    this.colorArray = AcoExtractor.GetColors(target).ToArray();
+                    break;
+                case DataType.ASE:
+                    this.colorArray = AseExtractor.GetColors(target).ToArray();
+                    break;
+            }
         }
 
         public override void OnInspectorGUI()
         {
-            if (!this.IsAco()) { return; }
-
-            this.NameField();
-            GUILayout.Space(FieldSpace);
-            this.ColorField();
-            GUILayout.Space(FieldSpace);
-            GUI.enabled = true;
-            this.ButtonAdd();
+            if (this.GetDataType() != DataType.Unknown)
+            {
+                this.NameField();
+                GUILayout.Space(FieldSpace);
+                this.ColorField();
+                GUILayout.Space(FieldSpace);
+                GUI.enabled = true;
+                this.ButtonAdd();
+            }
 
             base.OnInspectorGUI();
         }
@@ -52,7 +61,7 @@ namespace EasyColorPalette
             EditorGUILayout.LabelField("Name");
             GUILayout.Space(-5);
             GUILayout.BeginVertical("Box");
-            GUILayout.TextField(this.acoName);
+            GUILayout.TextField(this.dataName);
             GUILayout.EndVertical();
         }
 
@@ -97,7 +106,7 @@ namespace EasyColorPalette
             if (GUILayout.Button("Add to Presets"))
             {
                 // プリセットへ追加
-                ColorDatabase.Add(this.acoName, this.colorArray);
+                ColorDatabase.Add(this.dataName, this.colorArray);
 
                 // ウィンドウを開く
                 ColorWindow.Open();
@@ -108,11 +117,32 @@ namespace EasyColorPalette
         /// <summary>
         /// このアセットがacoかどうか判定
         /// </summary>
-        bool IsAco()
+        DataType GetDataType()
         {
             var path = AssetDatabase.GetAssetPath(target.GetInstanceID()); // ファイルパス
             var ext = Path.GetExtension(path); // 拡張子
-            return ext == ".aco";
+
+            DataType type;
+            switch (ext)
+            {
+                case ".aco":
+                    type = DataType.ACO;
+                    break;
+                case ".ase":
+                    type = DataType.ASE;
+                    break;
+                default:
+                    type = DataType.Unknown;
+                    break;
+            }
+            return type;
+        }
+
+        enum DataType
+        {
+            ACO,
+            ASE,
+            Unknown,
         }
     }
 }
